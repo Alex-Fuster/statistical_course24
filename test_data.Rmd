@@ -1,0 +1,82 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+library(readxl)
+
+data_counts = read_excel("nematodes_data.xlsx", sheet = "counts_examinations")
+
+data_kraemer = read_excel("nematodes_data.xlsx", sheet = "data_kraemer")
+
+data_island_characteristics = read_excel("nematodes_data.xlsx", sheet = "island_characteristics")
+```
+
+```{r}
+data_counts$nematode_count[which(data_counts$nematode_count == ">100")] <- "100"
+data_counts$nematode_count <- as.numeric(data_counts$nematode_count)
+
+df_load <- data_counts %>%
+  group_by(spp, island) %>%
+  summarise(mean_load = mean(nematode_count, na.rm = TRUE)) %>%
+  arrange(desc(mean_load))
+
+colnames(df_load) = c("sp", "island", "mean_load")
+
+
+
+# add island age
+
+# Convert max_emergence to numeric
+data_island_characteristics$max_emergence <- as.numeric(data_island_characteristics$max_emergence)
+
+# Left join to add island_age to df_load
+df_load <- df_load %>%
+  left_join(data_island_characteristics %>% 
+              select(island, mean_emergence),
+            by = "island") %>%
+  rename(island_age = mean_emergence) %>% 
+  
+  # add variable microhabitat
+  
+  mutate(microhabitat = ifelse(runif(n()) < 0.7, "terrestrial", "arboreal")) %>% 
+  
+  # add phylogenetic distance
+  
+  mutate(phylo_distance = runif(n(), min = 0, max = 10))
+
+
+df_load_spp <- df_load
+
+df_load_spp
+
+```
+
+
+
+
+# df load by individual
+
+```{r}
+data_counts = data_counts %>% 
+  select(spp, island, nematode_count) %>% 
+  rename(sp = spp)
+
+df_load_indiv <- data_counts %>%
+  left_join(data_island_characteristics %>% 
+              select(island, mean_emergence),
+            by = "island") %>%
+  rename(island_age = mean_emergence) %>% 
+
+  # add microhabitat and phylo distance info
+  
+  left_join(df_load_spp %>% select(sp, microhabitat, phylo_distance), by = "sp")
+
+
+df_load_indiv
+
+```
+
